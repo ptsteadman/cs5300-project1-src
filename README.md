@@ -2,7 +2,7 @@
 
 Class List:
   
-  -   SessionID: `int, ip`  (has .serialize(), .unserialize())
+  -   SessionID: `int, int`  (has .serialize(), .unserialize())
   -   Cookie: `SessionID, int, int, int` (has .serialize(), .unserialize())
   -   SessionState: `int, int, string, long` (has .serialize(), .unserialize())
   -   View: `Map<SessionID, List<Attribute>>` .exchangeWith()s (has .serialize(), .unserialize())
