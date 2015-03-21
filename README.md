@@ -13,8 +13,12 @@ Class List:
 
 1. Clone this repo, call this `<git_repo>`
 2. Create a new AWS project in eclipse
-3. Go into `~/workspace/<your_aws_project>/src`
-4. Make softlinks to __all__ the source files in `<git_repo>/src/`
-5. In the future, if you pull new source files from git, repeat steps 3-4
-6. If you want to create a new file, create it in `<git_repo>`, and softlink to your eclipse project
+3. Copy your AWS credientials `AwsCredentials.properties` to `<git_repo>/src/`
+4. Go into `~/workspace/<your_aws_project>`
+5. Delete the existing src directory, and make a softlink to the repo src
+   directory with `ln -s <git_repo>/src src`.
+6. In theory, your edits to files in eclipse will be reflected in the
+   `<git_repo>`
+6. The .gitignore will ignore your AwsCredentials.properties file when you
+   commit
 7. Profit
