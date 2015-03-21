@@ -11,10 +11,14 @@ public class SessionState {
 
 	public SessionState(SessionId sessionID, String message) {
 		this.sessionID = sessionID;
-		this.message = message;
 		this.version = 1;
 		this.timeout = System.currentTimeMillis() + 1000 * 60;
 		this.maxLength = 512 - 2 * 8 - 2 * (8 + (sessionID.getServerIP().length() * 8));
+		if (message.length() > maxLength) {
+			this.message = message.substring(0, maxLength);
+		} else {
+			this.message = message;
+		}
 	}
 	
 	public SessionState(String serialized) {}

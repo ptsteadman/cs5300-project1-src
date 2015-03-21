@@ -1,18 +1,28 @@
 
 public class SessionId {
-	private int serverId;
-	private String serverIP;
+	private Integer sessionId;
+	private String serverIP = "0.0.0.0";
 	
 	public SessionId() {}
 	
+	public SessionId(int sid, String IP) {
+		sessionId = sid;
+		serverIP = IP;
+	}
+	
+	public SessionId(String sid, String IP) {
+		sessionId = new Integer(sid);
+		serverIP = IP;
+	}
+	
 	public SessionId(String serialized) {}
 
-	public int getServerId() {
-		return serverId;
+	public Integer getServerId() {
+		return sessionId;
 	}
 
 	public void setServerId(int serverId) {
-		this.serverId = serverId;
+		this.sessionId = serverId;
 	}
 
 	public String getServerIP() {
@@ -24,7 +34,9 @@ public class SessionId {
 	}
 	
 	public String serialize() {
-		return "";
+		String[] tokens = serverIP.split(".");
+		assert(tokens.length == 4);
+		return "" + sessionId + "_" + serverIP;
 	}
 
 }

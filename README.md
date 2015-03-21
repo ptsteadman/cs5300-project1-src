@@ -16,4 +16,5 @@ Class List:
 3. Go into `~/workspace/<your_aws_project>/src`
 4. Make softlinks to __all__ the source files in `<git_repo>/src/`
 5. In the future, if you pull new source files from git, repeat steps 3-4
-6. Profit
+6. If you want to create a new file, create it in `<git_repo>`, and softlink to your eclipse project
+7. Profit
