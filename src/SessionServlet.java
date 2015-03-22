@@ -1,7 +1,11 @@
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.lang.Runtime;
 
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
@@ -23,6 +27,7 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 	private static final long serialVersionUID = 1L;
 	private HashMap<SessionId, SessionState> sessionTable;
 	private ConcurrentHashMap<SessionId, SessionId> lockTable;
+	private View groupView;
 	private static String initialString = "Hello World!";
 	private static final String cookieName = "CS5300P1ASESSION";
 	private String IPAddr = "0.0.0.0";
@@ -33,7 +38,18 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 	 */
 	public SessionServlet() {
 		super();
-		// XXX: get IP address from AWS
+		// untested code for getting IP address
+		try {
+			Runtime rt = Runtime.getRuntime();
+			Process proc = rt.exec("/opt/aws/bin/ec2-metadata --public-ipv4");
+			BufferedReader stdIn = new BufferedReader(new InputStreamReader(proc.getInputStream()));
+			String output = stdIn.readLine();
+			if(output != null && output != "") this.IPAddr = output.substring(12);
+		} catch (Throwable t){
+			System.out.println("Problem getting ec2 IP address.");
+			t.printStackTrace();
+		}
+		groupView = new View(this.IPAddr);  // create view and add self to it		
 		sessionTable = new HashMap<SessionId, SessionState>();
 		lockTable = new ConcurrentHashMap<SessionId, SessionId>();
 		GarbageCollector gc = new GarbageCollector();

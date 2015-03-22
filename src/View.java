@@ -8,8 +8,9 @@ public class View {
 	// map of server IDs -> (status, time)
 	public HashMap<String, ArrayList<Attribute>> viewMap;
 	
-	public View(){
+	public View(String serverId){
 		this.viewMap = new HashMap<String, ArrayList<Attribute>>();
+		// bootstrap self
 	}
 	
 	public void update(String serverId){
