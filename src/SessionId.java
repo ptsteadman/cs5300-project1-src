@@ -15,7 +15,14 @@ public class SessionId {
 		serverIP = IP;
 	}
 	
-	public SessionId(String serialized) {}
+	public SessionId(String serialized) {
+		String[] tokens = serialized.split("_");
+		assert(tokens.length == 2);
+		sessionId = new Integer(tokens[0]);
+		String[] frags = tokens[1].split(".");
+		assert(frags.length == 4);
+		serverIP = tokens[1];
+	}
 
 	public Integer getServerId() {
 		return sessionId;

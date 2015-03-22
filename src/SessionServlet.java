@@ -1,6 +1,5 @@
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,9 +15,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 
-// TODO list
-// location metadata -- add in next project.
-
 /**
  * Servlet implementation class SessionServlet
  */
@@ -32,6 +28,8 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 	private static final String cookieName = "CS5300P1ASESSION";
 	private String IPAddr = "0.0.0.0";
 	private Integer sessNum = 1;
+	private RPCServer rpcServer;
+	private RPCClient rpcClient;
 
 	/**
 	 * @see HttpServlet#HttpServlet()
@@ -52,6 +50,10 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 		groupView = new View(this.IPAddr);  // create view and add self to it		
 		sessionTable = new HashMap<SessionId, SessionState>();
 		lockTable = new ConcurrentHashMap<SessionId, SessionId>();
+		rpcClient = new RPCClient();
+		rpcServer = new RPCServer(this);
+		rpcServer.setDaemon(true);
+		rpcServer.start();
 		GarbageCollector gc = new GarbageCollector();
 		gc.setDaemon(true);
 		gc.start();
@@ -87,9 +89,13 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 			// SessionWrite
 			int rc = sessionWrite(ss);
 			if (rc != 1) {
-				System.out.println("fuck");
+				System.out.println("Write failed!");
 			}
-			// distributed write to another server
+			// XXX distributed write to another server
+			// here with rpcClient.sessionWriteClient
+			// need to loop through all known servers and send, 
+			// waiting for the first packet back
+
 			RequestDispatcher view = request.getRequestDispatcher("session.jsp");
 			request.setAttribute("state", ss.getMessage());
 			request.setAttribute("timeout", ss.getTimeout());
@@ -113,34 +119,32 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 				// if yes, then just do the normal thing
 				// if no, then send messages to 
 				RequestDispatcher view = request.getRequestDispatcher("session.jsp");
-				if (request.getParameter("refresh") != null) { // refresh button press
-					// refresh button
-					SessionState ss = null;
-					if (primaryIp.equals(IPAddr) || backupIp.equals(IPAddr)) {
-						ss = sessionRead(sid);
-					} else {
-						// distributed read
-						// XXX failure conditions
-					}
-					request.setAttribute("state", ss.getMessage());
-					request.setAttribute("timeout", ss.getTimeout());
-					Cookie sCookie = new Cookie(cookieName, cookieValue(ss, primaryIp, backupIp));
-					sCookie.setMaxAge(60);
-					response.addCookie(sCookie);
-					view.forward(request, response);
-				} else if (request.getParameter("logout") != null) { // logout button press
+				 if (request.getParameter("logout") != null) { // logout button press
 					// logout button
 					rCookie.setMaxAge(0);
 					response.addCookie(rCookie);
 					request.setAttribute("state", "Logged out!");
 					request.setAttribute("timeout", System.currentTimeMillis());
 					view.forward(request, response);
-				} else { // f5 re-get
-					// XXX wut
-					//					request.setAttribute("state", sData.getMessage());
-					//					request.setAttribute("timeout", sData.getTimeout());
-					//					response.addCookie(rCookie);
-					//					view.forward(request, response);
+				} else {  // refresh button press
+					SessionState ss = null;
+					if (primaryIp.equals(IPAddr) || backupIp.equals(IPAddr)) {
+						ss = sessionRead(sid);
+					} else {
+						// XXX distributed read to another server, using rpcClient.sessionReadClient
+						// the packet received could be:
+						// null if timeout
+						// have a version of -1 if if does not exist or
+						// be the correct one. If we fail,
+						// we either replicate the write again or just retain 0-tolerance
+					}
+
+					request.setAttribute("state", ss.getMessage());
+					request.setAttribute("timeout", ss.getTimeout());
+					Cookie sCookie = new Cookie(cookieName, cookieValue(ss, primaryIp, backupIp));
+					sCookie.setMaxAge(60);
+					response.addCookie(sCookie);
+					view.forward(request, response);
 				}
 			}
 		}
@@ -178,16 +182,18 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 
 				RequestDispatcher view = request.getRequestDispatcher("session.jsp");
 				String newState = request.getParameter("replacetext");
-				SessionState ss = new SessionState(sid, newState); // XXX careful with cookie timeouts
+				SessionState ss = new SessionState(sid, newState);
 				ss.setVersion(version + 1);
 				if (primaryIp.equals(IPAddr) || backupIp.equals(IPAddr)) {
 					sessionWrite(ss);
 				} else {
-					// distributed write
+					// XXX distributed write to backup with
+					// rpcClient.sessionWrite
+					// if we fail, idk what to do here yet
 				}
 				request.setAttribute("state", ss.getMessage());
 				request.setAttribute("timeout", ss.getTimeout());
-				Cookie sCookie = new Cookie(cookieName, cookieValue(ss, primaryIp, backupIp)); // XXX write failing
+				Cookie sCookie = new Cookie(cookieName, cookieValue(ss, primaryIp, backupIp));
 				sCookie.setMaxAge(60);
 				response.addCookie(sCookie);
 				view.forward(request, response);
@@ -240,7 +246,6 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 	}
 
 	public SessionState sessionRead(SessionId sessId) {
-		// TODO Auto-generated method stub
 		SessionState ss = new SessionState();
 		if (!lockTable.containsKey(sessId)) {
 			ss.setSessionID(new SessionId(-1, "0.0.0.0"));
@@ -256,7 +261,6 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 	}
 
 	public int sessionWrite(SessionState ss) {
-		// TODO Auto-generated method stub
 		SessionId sessid = ss.getSessionID();
 		if (!lockTable.containsKey(sessid)) {
 			lockTable.put(sessid, sessid);

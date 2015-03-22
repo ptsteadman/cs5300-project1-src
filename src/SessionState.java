@@ -5,15 +5,14 @@ public class SessionState {
 	private String message;
 	private long timeout;
 	// metadata fields
-	private int maxLength;
+	private static final int maxLength =  512 - 2 * 8 - 2 * (8 + (15 * 8));
 
 	public SessionState() {}
 
 	public SessionState(SessionId sessionID, String message) {
 		this.sessionID = sessionID;
 		this.version = 1;
-		this.timeout = System.currentTimeMillis() + 1000 * 60;
-		this.maxLength = 512 - 2 * 8 - 2 * (8 + (sessionID.getServerIP().length() * 8));
+		this.timeout = System.currentTimeMillis() + 1000 * 60 + 1000 * 5;
 		if (message.length() > maxLength) {
 			this.message = message.substring(0, maxLength);
 		} else {
@@ -21,7 +20,18 @@ public class SessionState {
 		}
 	}
 	
-	public SessionState(String serialized) {}
+	public SessionState(String serialized) {
+		String[] tokens = serialized.split("_");
+		assert(tokens.length == 5);
+		SessionId sid = new SessionId(tokens[0], tokens[1]);
+		sessionID = sid;
+		version = new Long(tokens[2]);
+		timeout = new Long(tokens[4]);
+		String msg = tokens[3];
+		assert(msg.charAt(0) == '(' && msg.charAt(msg.length()-1) == ')');
+		msg = msg.substring(1, msg.length()-1);
+		message = msg;
+	}
 
 	public SessionId getSessionID() {
 		return sessionID;
@@ -59,7 +69,7 @@ public class SessionState {
 	 * Refresh and increment version
 	 */
 	public void refresh() {
-		timeout = System.currentTimeMillis() + 1000 * 60;
+		timeout = System.currentTimeMillis() + 1000 * 60 + 1000 * 5;
 		this.version++;
 	}
 
@@ -75,6 +85,10 @@ public class SessionState {
 			this.message = newMessage;
 		}
 		this.version++;
-		this.timeout = System.currentTimeMillis() + 1000 * 60;
+		this.timeout = System.currentTimeMillis() + 1000 * 60 + 1000 * 5;
+	}
+	
+	public String serialize() {
+		return sessionID.serialize() + "_" + version + "_" + "(" + message + ")" + "_" + timeout;
 	}
 }
