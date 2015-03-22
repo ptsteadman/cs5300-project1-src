@@ -55,6 +55,7 @@ public class RPCClient {
 		Integer recvCallID = -2;
 		try {
 			do {
+				// XXX handle garbage responses
 				recvPkt.setLength(inbuf.length);
 				rpcSock.receive(recvPkt);
 				String inmsg = new String(recvPkt.getData());
@@ -108,6 +109,7 @@ public class RPCClient {
 		Integer recvCallID = -2;
 		try {
 			do {
+				// XXX handle garbage responses
 				recvPkt.setLength(inbuf.length);
 				rpcSock.receive(recvPkt);
 				String inmsg = new String(recvPkt.getData());
