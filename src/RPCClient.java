@@ -15,16 +15,19 @@ public class RPCClient {
 	private static final String READ = "sessionRead";
 	private static final String VIEW = "exchangeView";
 	private static final int UDP_PACKET_SIZE = 512;
+	private RPCUser ru;
 
 	
 	public RPCClient() {}
+	public RPCClient(RPCUser ru) {
+		this.ru = ru;
+	}
 	
 	public DatagramPacket sessionReadClient(SessionId sessid, ArrayList<String> destAddr) {
 		DatagramSocket rpcSock = null;
 		try {
 			rpcSock = new DatagramSocket();
 		} catch (SocketException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		int cid = -1;
@@ -35,6 +38,9 @@ public class RPCClient {
 		String outdata = "" + cid + "|" + READ + "|" + sessid.serialize();
 		outbuf = outdata.getBytes();
 		for (String ip : destAddr) {
+			if (ip == ru.getHost()) {
+				continue;
+			}
 			assert(ip.split(".").length == 4);
 			InetAddress addr = null;
 			try {
@@ -46,7 +52,6 @@ public class RPCClient {
 			try {
 				rpcSock.send(sendPkt);
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
@@ -55,13 +60,17 @@ public class RPCClient {
 		Integer recvCallID = -2;
 		try {
 			do {
-				// XXX handle garbage responses
+				// handle garbage responses
 				recvPkt.setLength(inbuf.length);
 				rpcSock.receive(recvPkt);
 				String inmsg = new String(recvPkt.getData());
 				String[] tok = inmsg.split("|");
 				assert(tok.length == 2);
 				recvCallID = new Integer(tok[0]);
+				SessionState ss = new SessionState(tok[1]);
+				if (ss.getVersion() == -1) { // handle garbage responses
+					continue;
+				}
 			} while (recvCallID != cid);
 		} catch(SocketTimeoutException e) {
 			recvPkt = null;
@@ -109,13 +118,17 @@ public class RPCClient {
 		Integer recvCallID = -2;
 		try {
 			do {
-				// XXX handle garbage responses
+				// handle garbage responses
 				recvPkt.setLength(inbuf.length);
 				rpcSock.receive(recvPkt);
 				String inmsg = new String(recvPkt.getData());
 				String[] tok = inmsg.split("|");
 				assert(tok.length == 2);
 				recvCallID = new Integer(tok[0]);
+				Integer rc = new Integer(tok[1]);
+				if (rc != 1) { // handle garbage responses
+					continue;
+				}
 			} while (recvCallID != cid);
 		} catch(SocketTimeoutException e) {
 			recvPkt = null;
@@ -128,6 +141,6 @@ public class RPCClient {
 	}
 	
 	public void exchangeViews() {
-		// right...
+		// XXX
 	}
 }

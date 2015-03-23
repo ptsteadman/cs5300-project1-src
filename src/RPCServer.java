@@ -38,6 +38,7 @@ public class RPCServer extends Thread {
 				byte[] outbuf = null;
 				String inmsg = new String(recvPkt.getData());
 				String[] msgTok = inmsg.split("|");
+				assert(msgTok.length == 3);
 				String callID = msgTok[0];
 				String opcode = msgTok[1];
 				String args = msgTok[2];

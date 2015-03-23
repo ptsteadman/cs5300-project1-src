@@ -8,7 +8,7 @@ import java.lang.Runtime;
 
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
-//import javax.servlet.annotation.WebServlet; XXX
+import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -18,7 +18,7 @@ import javax.servlet.http.HttpServletResponse;
 /**
  * Servlet implementation class SessionServlet
  */
-//@WebServlet("/SessionServlet") XXX
+@WebServlet("/SessionServlet")
 public class SessionServlet extends HttpServlet implements RPCUser {
 	private static final long serialVersionUID = 1L;
 	private HashMap<SessionId, SessionState> sessionTable;
@@ -50,7 +50,7 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 		groupView = new View(this.IPAddr);  // create view and add self to it		
 		sessionTable = new HashMap<SessionId, SessionState>();
 		lockTable = new ConcurrentHashMap<SessionId, SessionId>();
-		rpcClient = new RPCClient();
+		rpcClient = new RPCClient(this);
 		rpcServer = new RPCServer(this);
 		rpcServer.setDaemon(true);
 		rpcServer.start();
@@ -111,15 +111,12 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 				Cookie rCookie = validCookies.get(0);
 				String[] terms = rCookie.getValue().split("_");
 				SessionId sid = new SessionId(terms[0], terms[1]);
-				Integer version = new Integer(terms[2]);
+//				Integer version = new Integer(terms[2]);
 				String primaryIp = terms[3];
 				String backupIp = terms[4];
 
-				// check if we service this request
-				// if yes, then just do the normal thing
-				// if no, then send messages to 
 				RequestDispatcher view = request.getRequestDispatcher("session.jsp");
-				 if (request.getParameter("logout") != null) { // logout button press
+				if (request.getParameter("logout") != null) { // logout button press
 					// logout button
 					rCookie.setMaxAge(0);
 					response.addCookie(rCookie);
@@ -127,14 +124,16 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 					request.setAttribute("timeout", System.currentTimeMillis());
 					view.forward(request, response);
 				} else {  // refresh button press
+					// check if we service this request
+					// if yes, then just do the normal thing
+					// if no, then send messages to 
 					SessionState ss = null;
 					if (primaryIp.equals(IPAddr) || backupIp.equals(IPAddr)) {
 						ss = sessionRead(sid);
 					} else {
 						// XXX distributed read to another server, using rpcClient.sessionReadClient
 						// the packet received could be:
-						// null if timeout
-						// have a version of -1 if if does not exist or
+						// null if timeout or
 						// be the correct one. If we fail,
 						// we either replicate the write again or just retain 0-tolerance
 					}
@@ -275,5 +274,10 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 
 	public void exchangeViews() {
 		// TODO Auto-generated method stub
+	}
+
+	@Override
+	public String getHost() {
+		return this.IPAddr;
 	}
 }
