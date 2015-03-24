@@ -73,7 +73,7 @@ public class RPCServer extends Thread {
 	
 	private String parseSessionRead(String args) {
 		SessionId sid = new SessionId(args);
-		SessionState ss = ru.sessionRead(sid);
+		SessionState ss = ru.sessionRead(sid.serialize());
 		return ss.serialize();
 	}
 	

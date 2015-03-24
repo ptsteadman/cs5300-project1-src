@@ -24,11 +24,11 @@ public class SessionId {
 		serverIP = tokens[1];
 	}
 
-	public Integer getServerId() {
+	public Integer getSessionId() {
 		return sessionId;
 	}
 
-	public void setServerId(int serverId) {
+	public void getSessionId(int serverId) {
 		this.sessionId = serverId;
 	}
 
@@ -44,6 +44,24 @@ public class SessionId {
 		String[] tokens = serverIP.split(".");
 		assert(tokens.length == 4);
 		return "" + sessionId + "_" + serverIP;
+	}
+	
+	@Override
+	public int hashCode() {
+		int result = 17;
+		result = 31 * result + sessionId;
+		result = 31 * result + serverIP.hashCode();
+		return result;
+	}
+	
+	@Override
+	public boolean equals(Object o) {
+		if (o instanceof SessionId) {
+			SessionId sid = (SessionId)o;
+			return (serverIP.equals(sid.getServerIP()) && sessionId == sid.getSessionId());
+		} else {
+			return false;
+		}
 	}
 
 }
