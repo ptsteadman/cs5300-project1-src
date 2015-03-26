@@ -1,7 +1,7 @@
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Random;
-import java.util.TreeMap;
+import java.util.HashMap;
 
 import com.amazonaws.services.simpledb.model.Attribute;
 import com.amazonaws.services.simpledb.AmazonSimpleDB;
@@ -15,16 +15,15 @@ import com.amazonaws.services.simpledb.model.CreateDomainRequest;
 public class View {
 	private static final String DOMAIN = "project1";
     private AmazonSimpleDB sdb;	
-	// map of server IDs -> (status, time)
-	private TreeMap<String, String[]> viewMap;
+	private HashMap<String, String[]> viewMap; 	// map of server IDs -> (status, time)
 	private String localIP;
 	
 	/***
 	 * Unserializes a viewMapString into a new viewMap.
 	 */
-	private static TreeMap<String, String[]> unserialize(String viewMapString){
-		TreeMap<String, String[]> newViewMap = new TreeMap<String, String[]>();
-		String[] servers = viewMapString.split("&");
+	private static HashMap<String, String[]> unserialize(String viewMapString){
+		HashMap<String, String[]> newViewMap = new HashMap<String, String[]>();
+		String[] servers = viewMapString.split("\\&");
 		for(int i = 0; i < servers.length; i++){
 			String status = servers[i].split("_")[1];
 			String time = servers[i].split("_")[2]; 
@@ -36,7 +35,7 @@ public class View {
 	public View(String localIP){
         AWSCredentialsProvider credentialsProvider = new ClasspathPropertiesFileCredentialsProvider();
         sdb = new AmazonSimpleDBClient(credentialsProvider);
-		this.viewMap = new TreeMap<String, String[]>();
+		this.viewMap = new HashMap<String, String[]>();
 		this.localIP = localIP;
 
 		if(!sdb.listDomains().getDomainNames().contains(DOMAIN)){
@@ -52,8 +51,7 @@ public class View {
 	
 	/*** 
 	 * Serializes this view's viewMap into a String of the format 
-	 * svrID_status_time|svrID_status_time.  Use of TreeMap ensures
-	 * that two equivalent viewMaps will have the same serialized value. */
+	 * svrID_status_time|svrID_status_time.   */
 	public String serialize(){
 		String viewMapString = "";
 		Iterator<String> svrIDs = viewMap.keySet().iterator();
@@ -83,7 +81,7 @@ public class View {
 	}
 	
 	public void merge(String viewMapString){
-		TreeMap<String, String[]> otherViewMap = unserialize(viewMapString);
+		HashMap<String, String[]> otherViewMap = unserialize(viewMapString);
 		// set viewMap to the merge of viewMap and otherViewMap
 	}
 	

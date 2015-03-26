@@ -191,10 +191,6 @@ public class RPCClient {
 				String[] tok = inmsg.split("\\|");
 				assert(tok.length == 2);
 				recvCallID = new Integer(tok[0]);
-				Integer rc = new Integer(tok[1].trim());
-				if (rc != 1) { // handle garbage responses
-					continue;
-				}
 			} while (recvCallID != cid);
 		} catch(SocketTimeoutException e) {
 			recvPkt = null;
