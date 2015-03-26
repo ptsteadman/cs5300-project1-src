@@ -44,6 +44,7 @@ public class RPCServer extends Thread {
 				String callID = msgTok[0];
 				String opcode = msgTok[1];
 				String args = msgTok[2].trim();
+				// we should probably set the view to "up" for this IP here, a centralized location?
 				// parse and run correct RPCUser function based on opcode
 				switch (opcode) {
 				case WRITE:
@@ -61,6 +62,11 @@ public class RPCServer extends Thread {
 					rpcSock.send(rsendPkt);
 					break;
 				case VIEW:
+					String rview = ru.receiveExchangeViews(args);
+					rmsg = callID + "|" + rview;
+					outbuf = rmsg.getBytes();
+					DatagramPacket rviewPkt = new DatagramPacket(outbuf, outbuf.length, returnAddr, returnPort);
+					rpcSock.send(rviewPkt);
 					break;
 				default:
 					throw new Exception("Illegal opcode");
@@ -85,8 +91,7 @@ public class RPCServer extends Thread {
 		return "" + rc;
 	}
 	
-	private String parseExchangeViews(String args) {
-		return "";
+	private void parseRecieveExchangeViews(String args) {
 	}
 	
 }

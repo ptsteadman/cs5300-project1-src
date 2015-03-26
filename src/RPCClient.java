@@ -149,7 +149,7 @@ public class RPCClient {
 		return recvPkt;
 	}
 	
-	public DatagramPacket exchangeViews(View view, String ip) {
+	public DatagramPacket sendExchangeViews(View view, String ip) {
 		DatagramSocket rpcSock = null;
 		try {
 			rpcSock = new DatagramSocket();

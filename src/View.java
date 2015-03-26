@@ -1,5 +1,4 @@
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Random;
 import java.util.TreeMap;
@@ -83,12 +82,12 @@ public class View {
 		viewMap.put(serverId, new String[]{status, now});
 	}
 	
-	public void exchange(String viewMapString){
+	public void merge(String viewMapString){
 		TreeMap<String, String[]> otherViewMap = unserialize(viewMapString);
 		// set viewMap to the merge of viewMap and otherViewMap
 	}
 	
-	public void gossipWithSimpleDB(){
+	public void mergeWithSimpleDB(){
 		// exchange views with SimpleDB
 		
 	}

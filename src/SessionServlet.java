@@ -323,19 +323,19 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 				int k = localView.getViewSize();
 				if (random.nextInt(k + 1) == 0){
 					// gossip with SimpleDB
-					localView.gossipWithSimpleDB();
+					localView.mergeWithSimpleDB();
 				} else {
 					// gossip with random server
 					String randomIP = localView.getRandomIP();
-					DatagramPacket dp = rpcClient.exchangeViews(localView, randomIP);
+					DatagramPacket dp = rpcClient.sendExchangeViews(localView, randomIP);
 					if (dp == null) {
 						System.out.println("backup write failed");
 						localView.updateStatus(randomIP, "down");
 					} else {
 						// XXX backup up
 						localView.updateStatus(randomIP, "up");
-						// we have to parse out the view from the datagram, right?
-						localView.exchange(dp.toString());
+						// does this contain the opcode and other stuff?
+						localView.merge(dp.toString());
 					}
 				}
 
@@ -377,8 +377,9 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 		return 1;
 	}
 
-	public void exchangeViews() {
-		// TODO Auto-generated method stub
+	public String receiveExchangeViews(String viewMapString) {
+		localView.merge(viewMapString);
+		return localView.serialize();
 	}
 
 	@Override
