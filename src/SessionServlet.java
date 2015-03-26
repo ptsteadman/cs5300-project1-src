@@ -4,6 +4,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Hashtable;
+import java.util.Random;
 import java.lang.Runtime;
 import java.net.DatagramPacket;
 
@@ -24,7 +25,7 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 	private static final long serialVersionUID = 1L;
 	private HashMap<String, SessionState> sessionTable;
 	private Hashtable<String, String> lockTable;
-	private View groupView;
+	private View localView;
 	private static String initialString = "Hello World!";
 	private static final String cookieName = "CS5300P1ASESSION";
 	private String IPAddr = "0.0.0.0";
@@ -48,7 +49,7 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 			System.out.println("Problem getting ec2 IP address.");
 			t.printStackTrace();
 		}
-		groupView = new View(this.IPAddr);  // create view and add self to it		
+		localView = new View(this.IPAddr);  // create view and add self to it		
 		sessionTable = new HashMap<String, SessionState>();
 		lockTable = new Hashtable<String, String>();
 		rpcClient = new RPCClient(this);
@@ -311,6 +312,41 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 			}
 		}
 
+	}
+	
+	public class Gossiper extends Thread {
+		
+		@Override
+		public void run(){
+			while (true) {
+				Random random = new Random();
+				int k = localView.getViewSize();
+				if (random.nextInt(k + 1) == 0){
+					// gossip with SimpleDB
+					localView.gossipWithSimpleDB();
+				} else {
+					// gossip with random server
+					String randomIP = localView.getRandomIP();
+					DatagramPacket dp = rpcClient.exchangeViews(localView, randomIP);
+					if (dp == null) {
+						System.out.println("backup write failed");
+						localView.updateStatus(randomIP, "down");
+					} else {
+						// XXX backup up
+						localView.updateStatus(randomIP, "up");
+						// we have to parse out the view from the datagram, right?
+						localView.exchange(dp.toString());
+					}
+				}
+
+				try {
+					Thread.sleep(1000 * 5);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		
 	}
 
 	public SessionState sessionRead(String sessId) {

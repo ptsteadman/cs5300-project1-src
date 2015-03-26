@@ -149,7 +149,7 @@ public class RPCClient {
 		return recvPkt;
 	}
 	
-	public void exchangeViews(View view, String ip) {
+	public DatagramPacket exchangeViews(View view, String ip) {
 		DatagramSocket rpcSock = null;
 		try {
 			rpcSock = new DatagramSocket();
@@ -162,7 +162,7 @@ public class RPCClient {
 			cid = callID;
 		}
 		byte[] outbuf = new byte[UDP_PACKET_SIZE];
-		String outdata = "" + cid + "|" + VIEW + "|" + ss.serialize();
+		String outdata = "" + cid + "|" + VIEW + "|" + view.serialize();
 		outbuf = outdata.getBytes();
 		assert(ip.split(".").length == 4);
 		InetAddress addr = null;
