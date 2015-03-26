@@ -32,7 +32,7 @@ public class View {
 		// bootstrap self
 	}
 	
-	public void update(String serverId){
+	public void updateStatus(String serverId, String status){
 		// set to (up, now) in map
 	}
 	
