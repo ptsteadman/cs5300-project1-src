@@ -1,5 +1,7 @@
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.TreeMap;
 
 import com.amazonaws.services.simpledb.model.Attribute;
 import com.amazonaws.services.simpledb.AmazonSimpleDB;
@@ -14,12 +16,12 @@ public class View {
 	public static final String DOMAIN = "project1";
     private AmazonSimpleDB sdb;	
 	// map of server IDs -> (status, time)
-	public HashMap<String, ArrayList<Attribute>> viewMap;
+	public TreeMap<String, String[]> viewMap;
 	
 	public View(String serverId){
         AWSCredentialsProvider credentialsProvider = new ClasspathPropertiesFileCredentialsProvider();
         sdb = new AmazonSimpleDBClient(credentialsProvider);
-		this.viewMap = new HashMap<String, ArrayList<Attribute>>();
+		this.viewMap = new TreeMap<String, String[]>();
 
 		if(!sdb.listDomains().getDomainNames().contains(DOMAIN)){
 		     sdb.createDomain(new CreateDomainRequest(DOMAIN));
@@ -32,12 +34,50 @@ public class View {
 		// bootstrap self
 	}
 	
+	/*** 
+	 * Serializes the view's viewMap into a String of the format 
+	 * svrID_status_time|svrID_status_time.  Use of TreeMap ensures
+	 * that two equivalent viewMaps will have the same serialized value. */
+	public static String serializeViewMap(HashMap<String, String[]> viewMap){
+		String viewMapString = "";
+		Iterator<String> svrIDs = viewMap.keySet().iterator();
+		while(svrIDs.hasNext()){
+			String svrID = svrIDs.next();
+			viewMapString += svrID + "_";
+			viewMapString += viewMap.get(svrID)[0] + "_";
+			viewMapString += viewMap.get(svrID)[1];
+			viewMapString += "|";
+		}
+		return viewMapString;
+	}
+	
+	/***
+	 * Unserializes a viewMapString into a new viewMap.
+	 */
+	public static TreeMap<String, String[]> unserializeViewMap(String viewMapString){
+		TreeMap<String, String[]> newViewMap = new TreeMap<String, String[]>();
+		String[] servers = viewMapString.split("|");
+		for(int i = 0; i < servers.length; i++){
+			String[] status_time = new String[2];
+			status_time[0] = servers[i].split("_")[1]; // up/down
+			status_time[1] = servers[i].split("_")[2]; // time
+			newViewMap.put(servers[i].split("_")[0], status_time);
+		}
+		return newViewMap;
+	}
+	
 	public void updateStatus(String serverId, String status){
 		// set to (up, now) in map
 	}
 	
 	public void exchange(View otherView){
 		// perform exchange
+	}
+	
+	public void gossip(){
+		// choose random server ID from view or SimpleDB
+		
+		// exchange views with that server/DB via RPC call
 	}
 
 }
