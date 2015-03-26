@@ -4,7 +4,6 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Hashtable;
-import java.util.concurrent.ConcurrentHashMap;
 import java.lang.Runtime;
 import java.net.DatagramPacket;
 
@@ -59,6 +58,7 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 		GarbageCollector gc = new GarbageCollector();
 		gc.setDaemon(true);
 		gc.start();
+		System.out.println("Session Servlet Started");
 	}
 
 	/**
@@ -88,13 +88,13 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 				sessNum++;
 			}
 			SessionState ss = new SessionState(sessid, initialString);
-			String ip1 = "54.69.36.237";
-			String ip2 = "54.69.179.57";
+			String ip1 = "54.148.120.63";
+			String ip2 = "52.10.147.176";
 			String backup = "";
+
 			if (IPAddr.equals(ip1)) {
 				backup = ip2;
-			}
-			else {
+			} else {
 				backup = ip1;
 			}
 
@@ -103,20 +103,24 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 			if (rc != 1) {
 				System.out.println("Write failed!");
 			}
-			// XXX distributed write to another server
-			// here with rpcClient.sessionWriteClient
-			// need to loop through all known servers and send, 
-			// waiting for the first packet back
-			ArrayList<String> dest_id = new <String>ArrayList();
-			dest_id.add(backup);
-			rpcClient.sessionWriteClient(ss, dest_id); //Change code to get the backup ip correctly
 
+			ArrayList<String> dest_id = new ArrayList<String>();
+			dest_id.add(backup);
+			System.out.println("Writing to backup = " + backup);
+			System.out.println("We are: " + IPAddr);
+			DatagramPacket wPkt = rpcClient.sessionWriteClient(ss, dest_id); // Change code to get the backup ip correctly
+			if (wPkt == null) {
+				backup = "0.0.0.0";
+				System.out.println("backup write failed");
+				// XXX backup is down
+			} else {
+				// XXX backup is up
+			}
 
 			RequestDispatcher view = request.getRequestDispatcher("session.jsp");
 			request.setAttribute("state", ss.getMessage());
 			request.setAttribute("timeout", ss.getTimeout());
-			//Cookie sCookie = new Cookie(cookieName, cookieValue(ss, IPAddr, "0.0.0.0")); // XXX backup ip here
-			Cookie sCookie = new Cookie(cookieName, cookieValue(ss, IPAddr, backup)); // XXX backup ip here
+			Cookie sCookie = new Cookie(cookieName, cookieValue(ss, IPAddr, backup));
 			sCookie.setMaxAge(60);
 			response.addCookie(sCookie);
 			view.forward(request, response);
@@ -128,7 +132,7 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 				Cookie rCookie = validCookies.get(0);
 				String[] terms = rCookie.getValue().split("_");
 				SessionId sid = new SessionId(terms[0], terms[1]);
-//				Integer version = new Integer(terms[2]);
+				//				Integer version = new Integer(terms[2]);
 				String primaryIp = terms[3];
 				String backupIp = terms[4];
 
@@ -140,32 +144,52 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 					request.setAttribute("state", "Logged out!");
 					request.setAttribute("timeout", System.currentTimeMillis());
 					view.forward(request, response);
+					return;
 				} else {  // refresh button press
-					// check if we service this request
-					// if yes, then just do the normal thing
-					// if no, then send messages to 
 					SessionState ss = null;
-					if (primaryIp.equals(IPAddr) || backupIp.equals(IPAddr)) {
-						ss = sessionRead(sid.serialize());
+					SessionState ss1 = null;
+					SessionState ss2 = null;
+					ss1 = sessionRead(sid.serialize());
+
+					String backup = "";
+					if (primaryIp.equals(IPAddr)) {
+						backup = backupIp;
 					} else {
-						// XXX distributed read to another server, using rpcClient.sessionReadClient
-						// the packet received could be:
-						// null if timeout or
-						// be the correct one. If we fail,
-						// we either replicate the write again or just retain 0-tolerance
-						ArrayList<String> dest_id = new <String>ArrayList();
-						dest_id.add(backupIp);
-						//System.out.println(rpcClient.sessionReadClient(sid, dest_id));
-						DatagramPacket reply = rpcClient.sessionReadClient(sid, dest_id);
+						backup = primaryIp;
+					}
+					
+					ArrayList<String> dest_id = new ArrayList<String>();
+					dest_id.add(backup);
+					DatagramPacket reply = rpcClient.sessionReadClient(sid, dest_id);
+					if (reply == null) {
+						backupIp = "0.0.0.0";
+						ss = ss1;
+						// XXX backup down
+					} else {
 						String reply_data = new String(reply.getData()).trim();
 						String[] tok = reply_data.split("\\|");
 						assert(tok.length == 2);
-						ss = new SessionState(tok[1].trim());
+						ss2 = new SessionState(tok[1].trim());
+						// XXX backup up
 					}
 
+					if (ss1.getSessionID().getSessionId() == -1 && ss2.getSessionID().getSessionId() == -1) {
+						// we should never hit this
+						System.out.println("Session timed out, cookie persisted longer than session.");
+						rCookie.setMaxAge(0);
+						response.addCookie(rCookie);
+						request.setAttribute("state", "Session timed out!");
+						request.setAttribute("timeout", System.currentTimeMillis());
+						view.forward(request, response);
+						return;
+					} else if (ss2.getSessionID().getSessionId() == -1 || ss1.getVersion() > ss2.getVersion()) {
+						ss = ss1;
+					} else {
+						ss = ss2;
+					}
 					request.setAttribute("state", ss.getMessage());
 					request.setAttribute("timeout", ss.getTimeout());
-					Cookie sCookie = new Cookie(cookieName, cookieValue(ss, primaryIp, backupIp));
+					Cookie sCookie = new Cookie(cookieName, cookieValue(ss, IPAddr, backup));
 					sCookie.setMaxAge(60);
 					response.addCookie(sCookie);
 					view.forward(request, response);
@@ -180,7 +204,6 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		Cookie[] cookies = request.getCookies();
 		ArrayList<Cookie> validCookies = new ArrayList<Cookie>();
-		System.out.println("Inside Post!!");
 		// print cookies for sanity
 		for (Cookie c : cookies) {
 			if (c.getName().equals(cookieName)) {
@@ -209,19 +232,36 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 				String newState = request.getParameter("replacetext");
 				SessionState ss = new SessionState(sid, newState);
 				ss.setVersion(version + 1);
-				if (primaryIp.equals(IPAddr) || backupIp.equals(IPAddr)) {
-					sessionWrite(ss);
-				} else {
-					// XXX distributed write to backup with
-					// rpcClient.sessionWrite
-					// if we fail, idk what to do here yet
-					ArrayList<String> dest_id = new <String>ArrayList();
-					dest_id.add(backupIp);
-					rpcClient.sessionWriteClient(ss, dest_id);
+				int rc = sessionWrite(ss);
+				
+				if (rc != 1) {
+					// something bad happened
 				}
+
+				// XXX distributed write to backup
+				String backup = "";
+				if (primaryIp.equals(IPAddr)) {
+					backup = backupIp;
+				} else {
+					backup = primaryIp;
+				}
+				ArrayList<String> dest_id = new ArrayList<String>();
+				dest_id.add(backup);
+				System.out.println("Writing to backup = " + backup);
+				System.out.println("We are: " + IPAddr);
+				DatagramPacket dp = rpcClient.sessionWriteClient(ss, dest_id);
+				
+				if (dp == null) {
+					backup = "0.0.0.0";
+					System.out.println("backup write failed");
+					// XXX backup down
+				} else {
+					// XXX backup up
+				}
+
 				request.setAttribute("state", ss.getMessage());
 				request.setAttribute("timeout", ss.getTimeout());
-				Cookie sCookie = new Cookie(cookieName, cookieValue(ss, primaryIp, backupIp));
+				Cookie sCookie = new Cookie(cookieName, cookieValue(ss, IPAddr, backup));
 				sCookie.setMaxAge(60);
 				response.addCookie(sCookie);
 				view.forward(request, response);
@@ -292,7 +332,6 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 		SessionId sessid = ss.getSessionID();
 		if (!lockTable.containsKey(sessid.serialize())) {
 			lockTable.put(sessid.serialize(), sessid.serialize());
-			System.out.println("lock for " + sessid + " put in table");
 		}
 
 		String lock = lockTable.get(sessid.serialize());
