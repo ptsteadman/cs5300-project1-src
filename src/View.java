@@ -67,10 +67,12 @@ public class View {
 	}
 	
 	public void updateStatus(String serverId, String status){
-		// set to (up, now) in map
+		String now =  Long.toString(System.currentTimeMillis());
+		viewMap.put(serverId, new String[]{status, now});
 	}
 	
-	public void exchange(View otherView){
+	public void exchange(String viewMapString){
+		TreeMap<String, String[]> otherViewMap = unserializeViewMap(viewMapString);
 		// perform exchange
 	}
 	
