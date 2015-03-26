@@ -1,9 +1,11 @@
+import java.math.BigInteger;
+
 
 public class SessionState {
 	private SessionId sessionID;
 	private long version;
 	private String message;
-	private long timeout;
+	private Long timeout;
 	// metadata fields
 	private static final int maxLength =  512 - 2 * 8 - 2 * (8 + (15 * 8));
 
@@ -25,8 +27,9 @@ public class SessionState {
 		assert(tokens.length == 5);
 		SessionId sid = new SessionId(tokens[0], tokens[1]);
 		sessionID = sid;
-		version = new Long(tokens[2]);
-		timeout = new Long(tokens[4]);
+		version = Long.parseLong(tokens[2]);
+		System.out.println(tokens[4]+"--");
+		timeout = Long.parseLong(tokens[4].trim());
 		String msg = tokens[3];
 		assert(msg.charAt(0) == '(' && msg.charAt(msg.length()-1) == ')');
 		msg = msg.substring(1, msg.length()-1);
@@ -89,6 +92,6 @@ public class SessionState {
 	}
 	
 	public String serialize() {
-		return sessionID.serialize() + "_" + version + "_" + "(" + message + ")" + "_" + timeout;
+		return sessionID.serialize() + "_" + String.valueOf(version) + "_" + "(" + message + ")" + "_" + String.valueOf(timeout);
 	}
 }

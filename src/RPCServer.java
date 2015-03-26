@@ -21,27 +21,31 @@ public class RPCServer extends Thread {
 	
 	@Override
 	public void run() {
+		System.out.println("Server running");
 		DatagramSocket rpcSock = null;
 		try {
 			rpcSock = new DatagramSocket(portPROJ1BRPC);
 		} catch (SocketException e) {
 			e.printStackTrace();
 		}
-		
+		System.out.println("Server running");
 		while (true) {
 			byte[] inbuf = new byte[UDP_PACKET_SIZE];
 			DatagramPacket recvPkt = new DatagramPacket(inbuf, inbuf.length);
+			System.out.println("Server side packet received\t");
 			try {
 				rpcSock.receive(recvPkt);
 				InetAddress returnAddr = recvPkt.getAddress();
 				int returnPort = recvPkt.getPort();
 				byte[] outbuf = null;
 				String inmsg = new String(recvPkt.getData());
-				String[] msgTok = inmsg.split("|");
+				System.out.println("Message\t"+inmsg);
+				String[] msgTok = inmsg.split("\\|");
 				assert(msgTok.length == 3);
 				String callID = msgTok[0];
 				String opcode = msgTok[1];
-				String args = msgTok[2];
+				System.out.println("Printing opcode...\t"+opcode);
+				String args = msgTok[2].trim();
 				// parse and run correct RPCUser function based on opcode
 				switch (opcode) {
 				case WRITE:
@@ -73,7 +77,7 @@ public class RPCServer extends Thread {
 	
 	private String parseSessionRead(String args) {
 		SessionId sid = new SessionId(args);
-		SessionState ss = ru.sessionRead(sid);
+		SessionState ss = ru.sessionRead(sid.serialize());
 		return ss.serialize();
 	}
 	
