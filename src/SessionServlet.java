@@ -59,6 +59,10 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 		GarbageCollector gc = new GarbageCollector();
 		gc.setDaemon(true);
 		gc.start();
+		Gossiper gossiper = new Gossiper();
+		//gossiper.setDaemon(true);
+		//gossiper.start();
+		
 		System.out.println("Session Servlet Started");
 	}
 
