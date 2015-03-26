@@ -28,18 +28,19 @@ public class RPCClient {
 		DatagramSocket rpcSock = null;
 		try {
 			rpcSock = new DatagramSocket();
+			rpcSock.setSoTimeout(10000);
 		} catch (SocketException e) {
 			e.printStackTrace();
 		}
 		int cid = -1;
 		synchronized (callID) {
 			cid = callID;
+			callID++;
 		}
 		byte[] outbuf = new byte[UDP_PACKET_SIZE];
 		String outdata = "" + cid + "|" + READ + "|" + sessid.serialize();
 		outbuf = outdata.getBytes();
 		for (String ip : destAddr) {
-			System.out.println("Ip received\t"+ip);
 			if (ip == ru.getHost()) {
 				continue;
 			}
@@ -53,29 +54,27 @@ public class RPCClient {
 			DatagramPacket sendPkt = new DatagramPacket(outbuf, outbuf.length, addr, portPROJ1BRPC);
 			try {
 				rpcSock.send(sendPkt);
-				System.out.println("Packet Sent \t"+ip);
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
 		}
+		System.out.println("Client sent read messages");
 		byte[] inbuf = new byte[UDP_PACKET_SIZE];
 		DatagramPacket recvPkt = new DatagramPacket(inbuf, inbuf.length);
-		Integer recvCallID = -2;
+		Integer recvCallID = -42;
 		try {
 			do {
-				// handle garbage responses
 				recvPkt.setLength(inbuf.length);
 				rpcSock.receive(recvPkt);
+				System.out.println("Client received read packet");
 				String inmsg = new String(recvPkt.getData());
+				System.out.println("client received msg: " + inmsg);
 				String[] tok = inmsg.split("\\|");
 				assert(tok.length == 2);
+				System.out.println("callid = " + tok[0]);
 				recvCallID = new Integer(tok[0]);
-				SessionState ss = new SessionState(tok[1].trim());
-				System.out.println("Packet recieved \t");
-
-				if (ss.getVersion() == -1) { // handle garbage responses
-					continue;
-				}
+				System.out.println("recvCallID = " + recvCallID.toString());
+				System.out.println("cid = " + cid);
 			} while (recvCallID != cid);
 		} catch(SocketTimeoutException e) {
 			recvPkt = null;
@@ -91,6 +90,7 @@ public class RPCClient {
 		DatagramSocket rpcSock = null;
 		try {
 			rpcSock = new DatagramSocket();
+			rpcSock.setSoTimeout(10000);
 		} catch (SocketException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -98,6 +98,7 @@ public class RPCClient {
 		int cid = -1;
 		synchronized (callID) {
 			cid = callID;
+			callID++;
 		}
 		byte[] outbuf = new byte[UDP_PACKET_SIZE];
 		String outdata = "" + cid + "|" + WRITE + "|" + ss.serialize();
@@ -120,28 +121,31 @@ public class RPCClient {
 		}
 		byte[] inbuf = new byte[UDP_PACKET_SIZE];
 		DatagramPacket recvPkt = new DatagramPacket(inbuf, inbuf.length);
-		Integer recvCallID = -2;
+		Integer recvCallID = -42;
 		try {
 			do {
 				// handle garbage responses
 				recvPkt.setLength(inbuf.length);
 				rpcSock.receive(recvPkt);
+				System.out.println("client received write packet");
 				String inmsg = new String(recvPkt.getData());
+				System.out.println("client received msg: " + inmsg);
 				String[] tok = inmsg.split("\\|");
 				assert(tok.length == 2);
+				System.out.println("token is = " + tok[0]);
 				recvCallID = new Integer(tok[0]);
-				Integer rc = new Integer(tok[1].trim());
-				if (rc != 1) { // handle garbage responses
-					continue;
-				}
+				System.out.println("recvCallID = " + recvCallID);
+				System.out.println("cid = " +  cid);
 			} while (recvCallID != cid);
 		} catch(SocketTimeoutException e) {
 			recvPkt = null;
+			System.out.println("recvPkt is null");
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 		rpcSock.close();
 
+		System.out.println("client write packet returned");
 		return recvPkt;
 	}
 	

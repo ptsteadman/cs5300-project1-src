@@ -1,5 +1,3 @@
-import java.math.BigInteger;
-
 
 public class SessionState {
 	private SessionId sessionID;
@@ -28,7 +26,6 @@ public class SessionState {
 		SessionId sid = new SessionId(tokens[0], tokens[1]);
 		sessionID = sid;
 		version = Long.parseLong(tokens[2]);
-		System.out.println(tokens[4]+"--");
 		timeout = Long.parseLong(tokens[4].trim());
 		String msg = tokens[3];
 		assert(msg.charAt(0) == '(' && msg.charAt(msg.length()-1) == ')');
