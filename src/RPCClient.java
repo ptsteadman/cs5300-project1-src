@@ -38,6 +38,7 @@ public class RPCClient {
 		String outdata = "" + cid + "|" + READ + "|" + sessid.serialize();
 		outbuf = outdata.getBytes();
 		for (String ip : destAddr) {
+			System.out.println("Ip received\t"+ip);
 			if (ip == ru.getHost()) {
 				continue;
 			}
@@ -51,6 +52,7 @@ public class RPCClient {
 			DatagramPacket sendPkt = new DatagramPacket(outbuf, outbuf.length, addr, portPROJ1BRPC);
 			try {
 				rpcSock.send(sendPkt);
+				System.out.println("Packet Sent \t"+ip);
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -64,10 +66,12 @@ public class RPCClient {
 				recvPkt.setLength(inbuf.length);
 				rpcSock.receive(recvPkt);
 				String inmsg = new String(recvPkt.getData());
-				String[] tok = inmsg.split("|");
+				String[] tok = inmsg.split("\\|");
 				assert(tok.length == 2);
 				recvCallID = new Integer(tok[0]);
-				SessionState ss = new SessionState(tok[1]);
+				SessionState ss = new SessionState(tok[1].trim());
+				System.out.println("Packet recieved \t");
+
 				if (ss.getVersion() == -1) { // handle garbage responses
 					continue;
 				}
@@ -122,10 +126,10 @@ public class RPCClient {
 				recvPkt.setLength(inbuf.length);
 				rpcSock.receive(recvPkt);
 				String inmsg = new String(recvPkt.getData());
-				String[] tok = inmsg.split("|");
+				String[] tok = inmsg.split("\\|");
 				assert(tok.length == 2);
 				recvCallID = new Integer(tok[0]);
-				Integer rc = new Integer(tok[1]);
+				Integer rc = new Integer(tok[1].trim());
 				if (rc != 1) { // handle garbage responses
 					continue;
 				}

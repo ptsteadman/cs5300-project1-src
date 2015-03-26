@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.lang.Runtime;
+import java.net.DatagramPacket;
 
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
@@ -19,7 +20,7 @@ import javax.servlet.http.HttpServletResponse;
 /**
  * Servlet implementation class SessionServlet
  */
-@WebServlet("/SessionServlet")
+@WebServlet(value="/SessionServlet", loadOnStartup=1)
 public class SessionServlet extends HttpServlet implements RPCUser {
 	private static final long serialVersionUID = 1L;
 	private HashMap<String, SessionState> sessionTable;
@@ -87,6 +88,16 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 				sessNum++;
 			}
 			SessionState ss = new SessionState(sessid, initialString);
+			String ip1 = "54.69.36.237";
+			String ip2 = "54.69.179.57";
+			String backup = "";
+			if (IPAddr.equals(ip1)) {
+				backup = ip2;
+			}
+			else {
+				backup = ip1;
+			}
+
 			// SessionWrite
 			int rc = sessionWrite(ss);
 			if (rc != 1) {
@@ -96,11 +107,16 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 			// here with rpcClient.sessionWriteClient
 			// need to loop through all known servers and send, 
 			// waiting for the first packet back
+			ArrayList<String> dest_id = new <String>ArrayList();
+			dest_id.add(backup);
+			rpcClient.sessionWriteClient(ss, dest_id); //Change code to get the backup ip correctly
+
 
 			RequestDispatcher view = request.getRequestDispatcher("session.jsp");
 			request.setAttribute("state", ss.getMessage());
 			request.setAttribute("timeout", ss.getTimeout());
-			Cookie sCookie = new Cookie(cookieName, cookieValue(ss, IPAddr, "0.0.0.0")); // XXX backup ip here
+			//Cookie sCookie = new Cookie(cookieName, cookieValue(ss, IPAddr, "0.0.0.0")); // XXX backup ip here
+			Cookie sCookie = new Cookie(cookieName, cookieValue(ss, IPAddr, backup)); // XXX backup ip here
 			sCookie.setMaxAge(60);
 			response.addCookie(sCookie);
 			view.forward(request, response);
@@ -137,6 +153,14 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 						// null if timeout or
 						// be the correct one. If we fail,
 						// we either replicate the write again or just retain 0-tolerance
+						ArrayList<String> dest_id = new <String>ArrayList();
+						dest_id.add(backupIp);
+						//System.out.println(rpcClient.sessionReadClient(sid, dest_id));
+						DatagramPacket reply = rpcClient.sessionReadClient(sid, dest_id);
+						String reply_data = new String(reply.getData()).trim();
+						String[] tok = reply_data.split("\\|");
+						assert(tok.length == 2);
+						ss = new SessionState(tok[1].trim());
 					}
 
 					request.setAttribute("state", ss.getMessage());
@@ -156,6 +180,7 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		Cookie[] cookies = request.getCookies();
 		ArrayList<Cookie> validCookies = new ArrayList<Cookie>();
+		System.out.println("Inside Post!!");
 		// print cookies for sanity
 		for (Cookie c : cookies) {
 			if (c.getName().equals(cookieName)) {
@@ -190,6 +215,9 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 					// XXX distributed write to backup with
 					// rpcClient.sessionWrite
 					// if we fail, idk what to do here yet
+					ArrayList<String> dest_id = new <String>ArrayList();
+					dest_id.add(backupIp);
+					rpcClient.sessionWriteClient(ss, dest_id);
 				}
 				request.setAttribute("state", ss.getMessage());
 				request.setAttribute("timeout", ss.getTimeout());
