@@ -94,15 +94,6 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 				sessNum++;
 			}
 			SessionState ss = new SessionState(sessid, initialString);
-			String ip1 = "54.148.120.63";
-			String ip2 = "52.10.147.176";
-			String backup = "";
-
-			if (IPAddr.equals(ip1)) {
-				backup = ip2;
-			} else {
-				backup = ip1;
-			}
 
 			// SessionWrite
 			int rc = sessionWrite(ss);
@@ -110,17 +101,16 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 				System.out.println("Write failed!");
 			}
 
-			ArrayList<String> dest_id = new ArrayList<String>();
-			dest_id.add(backup);
-			System.out.println("Writing to backup = " + backup);
-			System.out.println("We are: " + IPAddr);
-			DatagramPacket wPkt = rpcClient.sessionWriteClient(ss, dest_id); // Change code to get the backup ip correctly
-			if (wPkt == null) {
-				backup = "0.0.0.0";
-				System.out.println("backup write failed");
-				// XXX backup is down
-			} else {
-				// XXX backup is up
+			ArrayList<String> dest_id = new ArrayList<String>(); // XXX get up servers not me
+			String backup = "0.0.0.0";
+			if (dest_id.size() > 0) {
+				DatagramPacket wPkt = rpcClient.sessionWriteClient(ss, dest_id);
+				if (wPkt == null) {
+					// XXX backup is down
+				} else {
+					backup = wPkt.getAddress().toString();
+					// XXX backup is up
+				}
 			}
 
 			RequestDispatcher view = request.getRequestDispatcher("session.jsp");
@@ -157,27 +147,32 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 					SessionState ss2 = null;
 					ss1 = sessionRead(sid.serialize());
 
-					String backup = "";
+					String backup = "0.0.0.0";
 					if (primaryIp.equals(IPAddr)) {
 						backup = backupIp;
 					} else {
 						backup = primaryIp;
 					}
 					
-					ArrayList<String> dest_id = new ArrayList<String>();
-					dest_id.add(backup);
-					DatagramPacket reply = rpcClient.sessionReadClient(sid, dest_id);
-					if (reply == null) {
-						backupIp = "0.0.0.0";
-						ss = ss1;
-						// XXX backup down
+					if (backup.equals("0.0.0.0")) {
+						
 					} else {
-						String reply_data = new String(reply.getData()).trim();
-						String[] tok = reply_data.split("\\|");
-						assert(tok.length == 2);
-						ss2 = new SessionState(tok[1].trim());
-						// XXX backup up
+						ArrayList<String> dest_id = new ArrayList<String>();
+						dest_id.add(backup);
+						DatagramPacket reply = rpcClient.sessionReadClient(sid, dest_id);
+						if (reply == null) {
+							backup = "0.0.0.0";
+							ss = ss1;
+							// XXX backup down
+						} else {
+							String reply_data = new String(reply.getData()).trim();
+							String[] tok = reply_data.split("\\|");
+							assert(tok.length == 2);
+							ss2 = new SessionState(tok[1].trim());
+							// XXX backup up
+						}
 					}
+					
 
 					if (ss1.getSessionID().getSessionId() == -1 && ss2.getSessionID().getSessionId() == -1) {
 						// we should never hit this
