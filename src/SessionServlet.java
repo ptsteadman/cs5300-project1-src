@@ -338,9 +338,9 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 					} else {
 						// XXX backup up
 						localView.updateStatus(randomIP, "up");
-						// does this contain the opcode and other stuff?
 						String returned = new String(dp.getData());
 						returned = returned.split("\\|")[1].trim();
+						// merge again in case this server has updated its view
 						localView.merge(returned);
 					}
 				}

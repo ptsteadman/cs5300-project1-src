@@ -3,7 +3,10 @@ import java.util.Iterator;
 import java.util.Random;
 import java.util.HashMap;
 
-import com.amazonaws.services.simpledb.model.Attribute;
+import com.amazonaws.services.simpledb.model.GetAttributesRequest;
+import com.amazonaws.services.simpledb.model.GetAttributesResult;
+import com.amazonaws.services.simpledb.model.PutAttributesRequest;
+import com.amazonaws.services.simpledb.model.ReplaceableAttribute;
 import com.amazonaws.services.simpledb.AmazonSimpleDB;
 import com.amazonaws.services.simpledb.AmazonSimpleDBClient;
 import com.amazonaws.auth.AWSCredentialsProvider;
@@ -14,6 +17,9 @@ import com.amazonaws.services.simpledb.model.CreateDomainRequest;
 
 public class View {
 	private static final String DOMAIN = "project1";
+	private static final String ITEM_NAME = "view";
+	private static final String ATTR_NAME = "serialized_view";
+
     private AmazonSimpleDB sdb;	
 	private HashMap<String, String[]> viewMap; 	// map of server IDs -> (status, time)
 	private String localIP;
@@ -37,16 +43,13 @@ public class View {
         sdb = new AmazonSimpleDBClient(credentialsProvider);
 		this.viewMap = new HashMap<String, String[]>();
 		this.localIP = localIP;
-
+		viewMap.put(localIP, new String[]{"up", Long.toString(System.currentTimeMillis())});
+		
 		if(!sdb.listDomains().getDomainNames().contains(DOMAIN)){
 		     sdb.createDomain(new CreateDomainRequest(DOMAIN));
 		}
-		System.out.println("Your SimpleDB domains: ");
-		for(String d : sdb.listDomains().getDomainNames()){
-			System.out.println("- " + d);
-		}
 		
-		// bootstrap self using SimpleDB
+		mergeWithSimpleDB();
 	}
 	
 	/*** 
@@ -83,11 +86,39 @@ public class View {
 	public void merge(String viewMapString){
 		HashMap<String, String[]> otherViewMap = unserialize(viewMapString);
 		// set viewMap to the merge of viewMap and otherViewMap
+		for(String svrID : otherViewMap.keySet()){
+			if(!viewMap.containsKey(svrID)) viewMap.put(svrID, otherViewMap.get(svrID));
+			if(Long.parseLong(otherViewMap.get(svrID)[1]) > Long.parseLong(viewMap.get(svrID)[1])){
+				viewMap.put(svrID, otherViewMap.get(svrID));
+			}
+		}
 	}
 	
 	public void mergeWithSimpleDB(){
 		// exchange views with SimpleDB
+		GetAttributesRequest getReq = new GetAttributesRequest();
+		getReq.setDomainName(DOMAIN);
+		getReq.setItemName(ITEM_NAME);
+		ArrayList<String> attribute = new ArrayList<String>();
+		attribute.add(ATTR_NAME);
+		getReq.setAttributeNames(attribute);
+		GetAttributesResult getRes = sdb.getAttributes(getReq);
 		
+		if(getRes.getAttributes().size() == 1){
+			String dbViewString = getRes.getAttributes().get(0).getValue();
+			this.merge(dbViewString);
+		}
+		
+		PutAttributesRequest putReq = new PutAttributesRequest();
+		ReplaceableAttribute attr = new ReplaceableAttribute();
+		attr.setName(ATTR_NAME);
+		attr.setValue(this.serialize());
+		putReq.setDomainName(DOMAIN);
+		putReq.setItemName(ITEM_NAME);
+		ArrayList<ReplaceableAttribute> attributes = new ArrayList<ReplaceableAttribute>();
+		attributes.add(attr);
+		putReq.setAttributes(attributes);
+		sdb.putAttributes(putReq);
 	}
 
 }
