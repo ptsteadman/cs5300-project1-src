@@ -8,7 +8,14 @@
 </head>
 <body>
 <h1>${state}</h1>
-<h1>timeout will occur at system clock time: ${timeout}</h1>
+<h1>local server id: ${local}</h1>
+<h1>found at: ${found}</h1>
+<h1>primary ip: ${primary}</h1>
+<h1>primary timeout: ${timeout1}</h1>
+<h1>backup ip: ${backup}</h1>
+<h1>backup timeout: ${timeout2}</h1>
+<h1>view: ${view}</h1>
+
 <form name="replaceform" method="post" action="SessionServlet">
 	<input type="text" name="replacetext" />
 	<input type="submit" name="replace" value="replace" />

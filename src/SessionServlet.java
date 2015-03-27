@@ -3,9 +3,11 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 import java.lang.Runtime;
 import java.net.DatagramPacket;
 
@@ -27,7 +29,7 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 	private static final String cookieName = "CS5300P1ASESSION";
 	private static final int gossipSecs = 5000;
 	private HashMap<String, SessionState> sessionTable;
-	private Map<String, String> lockTable;
+	private ConcurrentHashMap<String, String> lockTable;
 	private View localView;
 	private static String initialString = "Hello World!";
 	private String IPAddr = "0.0.0.0";
@@ -53,7 +55,8 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 		}
 		localView = new View(this.IPAddr);  // create view and add self to it		
 		sessionTable = new HashMap<String, SessionState>();
-		lockTable = Collections.synchronizedMap(new HashMap<String, String>());
+		//lockTable = Collections.synchronizedMap(new HashMap<String, String>());
+		lockTable = new ConcurrentHashMap<String, String>();
 		rpcClient = new RPCClient(this);
 		rpcServer = new RPCServer(this);
 		rpcServer.setDaemon(true);
@@ -103,6 +106,11 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 			}
 
 			ArrayList<String> dest_id = localView.getOtherUpServers();
+			System.out.println("Replicating new session request");
+			System.out.println("We know about:");
+			for (String ip : dest_id) {
+				System.out.println(ip);
+			}
 			String backup = "0.0.0.0";
 			if (dest_id.size() > 0) {
 				DatagramPacket wPkt = rpcClient.sessionWriteClient(ss, dest_id);
@@ -111,14 +119,19 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 						localView.updateStatus(ip, "down");
 					}
 				} else {
-					backup = wPkt.getAddress().toString();
+					backup = wPkt.getAddress().getHostAddress();
 					localView.updateStatus(backup, "up");
 				}
 			}
 
 			RequestDispatcher view = request.getRequestDispatcher("session.jsp");
 			request.setAttribute("state", ss.getMessage());
-			request.setAttribute("timeout", ss.getTimeout());
+			request.setAttribute("timeout1", ss.getTimeout());
+			request.setAttribute("primary", IPAddr);
+			request.setAttribute("timeout2", ss.getTimeout());
+			request.setAttribute("backup", backup);
+			request.setAttribute("local", IPAddr);
+			request.setAttribute("view", localView.serialize());
 			Cookie sCookie = new Cookie(cookieName, cookieValue(ss, IPAddr, backup));
 			sCookie.setMaxAge(60);
 			response.addCookie(sCookie);
@@ -141,7 +154,12 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 					rCookie.setMaxAge(0);
 					response.addCookie(rCookie);
 					request.setAttribute("state", "Logged out!");
-					request.setAttribute("timeout", System.currentTimeMillis());
+					request.setAttribute("timeout1", System.currentTimeMillis());
+					request.setAttribute("primary", primaryIp);
+					request.setAttribute("timeout2", System.currentTimeMillis());
+					request.setAttribute("backup", backupIp);
+					request.setAttribute("local", IPAddr);
+					request.setAttribute("view", localView.serialize());
 					view.forward(request, response);
 					return;
 				} else {  // refresh button press
@@ -149,6 +167,7 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 					SessionState ss1 = null;
 					SessionState ss2 = null;
 					ss1 = sessionRead(sid.serialize());
+					String found = "";
 
 					String backup = "0.0.0.0";
 					if (primaryIp.equals(IPAddr)) {
@@ -156,9 +175,11 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 					} else {
 						backup = primaryIp;
 					}
+					System.out.println("Doing distributed read");
 					
 					if (backup.equals("0.0.0.0")) {
 						// pass for test
+						System.out.println("Null backup!");
 					} else {
 						ArrayList<String> dest_id = new ArrayList<String>();
 						dest_id.add(backup);
@@ -173,7 +194,7 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 							String[] tok = reply_data.split("\\|");
 							assert(tok.length == 2);
 							ss2 = new SessionState(tok[1].trim());
-							localView.updateStatus(reply.getAddress().toString(), "up");
+							localView.updateStatus(reply.getAddress().getHostAddress(), "up");
 						}
 					}
 					
@@ -191,16 +212,29 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 						rCookie.setMaxAge(0);
 						response.addCookie(rCookie);
 						request.setAttribute("state", "Session timed out!");
-						request.setAttribute("timeout", System.currentTimeMillis());
+						request.setAttribute("timeout1", System.currentTimeMillis());
+						request.setAttribute("primary", primaryIp);
+						request.setAttribute("timeout2", System.currentTimeMillis());
+						request.setAttribute("backup", backupIp);
+						request.setAttribute("local", IPAddr);
+						request.setAttribute("view", localView.serialize());
 						view.forward(request, response);
 						return;
 					} else if (ss2.getSessionID().getSessionId() == -1 || ss1.getVersion() > ss2.getVersion()) {
 						ss = ss1;
+						found = IPAddr;
 					} else {
 						ss = ss2;
+						found = backup;
 					}
 					request.setAttribute("state", ss.getMessage());
-					request.setAttribute("timeout", ss.getTimeout());
+					request.setAttribute("timeout1", ss1.getTimeout());
+					request.setAttribute("primary", IPAddr);
+					request.setAttribute("timeout2", ss2.getTimeout());
+					request.setAttribute("backup", backup);
+					request.setAttribute("local", IPAddr);
+					request.setAttribute("view", localView.serialize());
+					request.setAttribute("found", found);
 					Cookie sCookie = new Cookie(cookieName, cookieValue(ss, IPAddr, backup));
 					sCookie.setMaxAge(60);
 					response.addCookie(sCookie);
@@ -250,6 +284,7 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 					// something bad happened
 				}
 
+				System.out.println("Replicating write");
 				String backup = "0.0.0.0";
 				if (primaryIp.equals(IPAddr)) {
 					backup = backupIp;
@@ -259,6 +294,10 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 
 				ArrayList<String> dest_id = new ArrayList<String>();
 				dest_id.add(backup);
+				System.out.println("We know about:");
+				for (String ip : dest_id) {
+					System.out.println(ip);
+				}
 				DatagramPacket dp = rpcClient.sessionWriteClient(ss, dest_id);
 				
 				if (dp == null) {
@@ -270,7 +309,12 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 				}
 
 				request.setAttribute("state", ss.getMessage());
-				request.setAttribute("timeout", ss.getTimeout());
+				request.setAttribute("timeout1", ss.getTimeout());
+				request.setAttribute("primary", IPAddr);
+				request.setAttribute("timeout2", ss.getTimeout());
+				request.setAttribute("backup", backup);
+				request.setAttribute("local", IPAddr);
+				request.setAttribute("view", localView.serialize());
 				Cookie sCookie = new Cookie(cookieName, cookieValue(ss, IPAddr, backup));
 				sCookie.setMaxAge(60);
 				response.addCookie(sCookie);
@@ -301,18 +345,21 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 		@Override
 		public void run() {
 			while (true) {
-				for (String sid : lockTable.keySet()) {
+				Enumeration<String> enu = lockTable.keys();
+				while (enu.hasMoreElements()) {
+					String sid = enu.nextElement();
 					String lock = lockTable.get(sid);
 					synchronized (lock) {
 						SessionState sData = sessionTable.get(sid);
 						if (sData.getTimeout() < System.currentTimeMillis()) {
 							// expired, remove from both tables.
 							System.out.println("Removing expired session.");
-							lockTable.remove(sid);
 							sessionTable.remove(sid);
+							lockTable.remove(sid);
 						}
 					}
 				}
+
 				try {
 					Thread.sleep(1000 * 5);
 				} catch (InterruptedException e) {
