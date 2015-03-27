@@ -61,8 +61,8 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 		gc.setDaemon(true);
 		gc.start();
 		Gossiper gossiper = new Gossiper();
-		//gossiper.setDaemon(true);
-		//gossiper.start();
+		gossiper.setDaemon(true);
+		gossiper.start();
 		
 		System.out.println("Session Servlet Started");
 	}
@@ -319,13 +319,14 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 		public void run(){
 			while (true) {
 				Random random = new Random();
-				int k = localView.getViewSize();
-				if (random.nextInt(k + 1) == 0){
+				ArrayList<String> otherUpServers = localView.getOtherUpServers();
+				int k = otherUpServers.size() + 1;
+				if (k == 1 || random.nextInt(k) == 0){
 					// gossip with SimpleDB
 					localView.mergeWithSimpleDB();
 				} else {
 					// gossip with random server
-					String randomIP = localView.getRandomIP();
+					String randomIP = otherUpServers.get(random.nextInt(otherUpServers.size() - 1));
 					DatagramPacket dp = rpcClient.sendExchangeViews(localView, randomIP);
 					if (dp == null) {
 						System.out.println("backup write failed");

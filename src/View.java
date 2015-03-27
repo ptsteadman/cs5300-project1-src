@@ -1,6 +1,5 @@
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.Random;
 import java.util.HashMap;
 
 import com.amazonaws.services.simpledb.model.GetAttributesRequest;
@@ -68,14 +67,15 @@ public class View {
 		return viewMapString;
 	}
 	
-	public int getViewSize(){
-		return viewMap.size();
-	}
-	
-	public String getRandomIP(){
-		Random random = new Random();
-		ArrayList<String> keys = new ArrayList<String>(viewMap.keySet());
-		return keys.get(random.nextInt(keys.size()));
+	public ArrayList<String> getOtherUpServers(){
+		ArrayList<String> otherUpServers = new ArrayList<String>();
+		if(viewMap.size() <= 1) return otherUpServers;
+		for(String svrID : viewMap.keySet()){
+			if(!svrID.equals(this.localIP) && viewMap.get(svrID)[0] == "up"){
+				otherUpServers.add(svrID);
+			}
+		}
+		return otherUpServers;
 	}
 	
 	public void updateStatus(String serverId, String status){
