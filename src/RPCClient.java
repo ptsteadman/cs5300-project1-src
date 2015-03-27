@@ -160,6 +160,7 @@ public class RPCClient {
 		int cid = -1;
 		synchronized (callID) {
 			cid = callID;
+			callID++;
 		}
 		byte[] outbuf = new byte[UDP_PACKET_SIZE];
 		String outdata = "" + cid + "|" + VIEW + "|" + view.serialize();

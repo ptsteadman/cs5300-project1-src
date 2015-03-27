@@ -2,8 +2,9 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.Hashtable;
+import java.util.Map;
 import java.util.Random;
 import java.lang.Runtime;
 import java.net.DatagramPacket;
@@ -24,7 +25,7 @@ import javax.servlet.http.HttpServletResponse;
 public class SessionServlet extends HttpServlet implements RPCUser {
 	private static final long serialVersionUID = 1L;
 	private HashMap<String, SessionState> sessionTable;
-	private Hashtable<String, String> lockTable;
+	private Map<String, String> lockTable;
 	private View localView;
 	private static String initialString = "Hello World!";
 	private static final String cookieName = "CS5300P1ASESSION";
@@ -51,7 +52,7 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 		}
 		localView = new View(this.IPAddr);  // create view and add self to it		
 		sessionTable = new HashMap<String, SessionState>();
-		lockTable = new Hashtable<String, String>();
+		lockTable = Collections.synchronizedMap(new HashMap<String, String>());
 		rpcClient = new RPCClient(this);
 		rpcServer = new RPCServer(this);
 		rpcServer.setDaemon(true);
@@ -243,7 +244,6 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 					// something bad happened
 				}
 
-				// XXX distributed write to backup
 				String backup = "";
 				if (primaryIp.equals(IPAddr)) {
 					backup = backupIp;
