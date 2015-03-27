@@ -17,7 +17,7 @@ import com.amazonaws.services.simpledb.model.CreateDomainRequest;
 public class View {
 	private static final String DOMAIN = "project1";
 	private static final String ITEM_NAME = "dbView";
-	private static final String ATTR_NAME = "serialized_view";
+	private static final String ATTR_NAME = "v1";
 
     private AmazonSimpleDB sdb;	
 	private HashMap<String, String[]> viewMap; 	// map of server IDs -> (status, time)
@@ -70,9 +70,8 @@ public class View {
 	
 	public ArrayList<String> getOtherUpServers(){
 		ArrayList<String> otherUpServers = new ArrayList<String>();
-		if(viewMap.size() <= 1) return otherUpServers;
 		for(String svrID : viewMap.keySet()){
-			if(!svrID.equals(this.localIP) && viewMap.get(svrID)[0] == "up"){
+			if(!svrID.equals(this.localIP) && viewMap.get(svrID)[0].equals("up")){
 				otherUpServers.add(svrID);
 			}
 		}
@@ -81,6 +80,7 @@ public class View {
 	
 	public void updateStatus(String serverId, String status){
 		String now =  Long.toString(System.currentTimeMillis());
+		System.out.println(serverId);
 		viewMap.put(serverId, new String[]{status, now});
 	}
 	
@@ -104,7 +104,6 @@ public class View {
 		attribute.add(ATTR_NAME);
 		getReq.setAttributeNames(attribute);
 		GetAttributesResult getRes = sdb.getAttributes(getReq);
-		System.out.println(getRes.getAttributes().size());
 		if(getRes.getAttributes().size() == 1){
 			String dbViewString = getRes.getAttributes().get(0).getValue();
 			this.merge(dbViewString);
