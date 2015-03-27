@@ -91,7 +91,4 @@ public class RPCServer extends Thread {
 		return "" + rc;
 	}
 	
-	private void parseRecieveExchangeViews(String args) {
-	}
-	
 }
