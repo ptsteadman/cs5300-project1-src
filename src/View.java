@@ -16,7 +16,7 @@ import com.amazonaws.services.simpledb.model.CreateDomainRequest;
 
 public class View {
 	private static final String DOMAIN = "project1";
-	private static final String ITEM_NAME = "view";
+	private static final String ITEM_NAME = "dbView";
 	private static final String ATTR_NAME = "serialized_view";
 
     private AmazonSimpleDB sdb;	
@@ -62,7 +62,8 @@ public class View {
 			// localIP time is always now, up
 			String status = svrID == localIP ? "up" : viewMap.get(svrID)[0];
 			String time = svrID == localIP ? Long.toString(System.currentTimeMillis()) : viewMap.get(svrID)[1];
-			viewMapString += svrID + "_" + status + "_" + time + "&";
+			viewMapString += svrID + "_" + status + "_" + time;
+			if(svrIDs.hasNext()) viewMapString += "&";
 		}
 		return viewMapString;
 	}
@@ -103,7 +104,7 @@ public class View {
 		attribute.add(ATTR_NAME);
 		getReq.setAttributeNames(attribute);
 		GetAttributesResult getRes = sdb.getAttributes(getReq);
-		
+		System.out.println(getRes.getAttributes().size());
 		if(getRes.getAttributes().size() == 1){
 			String dbViewString = getRes.getAttributes().get(0).getValue();
 			this.merge(dbViewString);
@@ -113,6 +114,7 @@ public class View {
 		ReplaceableAttribute attr = new ReplaceableAttribute();
 		attr.setName(ATTR_NAME);
 		attr.setValue(this.serialize());
+		attr.setReplace(true);
 		putReq.setDomainName(DOMAIN);
 		putReq.setItemName(ITEM_NAME);
 		ArrayList<ReplaceableAttribute> attributes = new ArrayList<ReplaceableAttribute>();

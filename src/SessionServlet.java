@@ -328,15 +328,18 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 		@Override
 		public void run(){
 			while (true) {
+				System.out.println(localView.serialize());
 				Random random = new Random();
 				ArrayList<String> otherUpServers = localView.getOtherUpServers();
 				int k = otherUpServers.size() + 1;
 				if (k == 1 || random.nextInt(k) == 0){
 					// gossip with SimpleDB
 					localView.mergeWithSimpleDB();
+					System.out.println("gossiping w simpleDB");
 				} else {
 					// gossip with random server
 					String randomIP = otherUpServers.get(random.nextInt(otherUpServers.size() - 1));
+					System.out.println("Gossiping with " + randomIP);
 					DatagramPacket dp = rpcClient.sendExchangeViews(localView, randomIP);
 					if (dp == null) {
 						localView.updateStatus(randomIP, "down");
