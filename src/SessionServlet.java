@@ -101,15 +101,17 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 				System.out.println("Write failed!");
 			}
 
-			ArrayList<String> dest_id = new ArrayList<String>(); // XXX get up servers not me
+			ArrayList<String> dest_id = localView.getOtherUpServers();
 			String backup = "0.0.0.0";
 			if (dest_id.size() > 0) {
 				DatagramPacket wPkt = rpcClient.sessionWriteClient(ss, dest_id);
 				if (wPkt == null) {
-					// XXX backup is down
+					for (String ip : dest_id) {
+						localView.updateStatus(ip, "down");
+					}
 				} else {
 					backup = wPkt.getAddress().toString();
-					// XXX backup is up
+					localView.updateStatus(backup, "up");
 				}
 			}
 
@@ -162,17 +164,25 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 						DatagramPacket reply = rpcClient.sessionReadClient(sid, dest_id);
 						if (reply == null) {
 							backup = "0.0.0.0";
-							ss = ss1;
-							// XXX backup down
+							for (String ip : dest_id) {
+								localView.updateStatus(ip, "down");
+							}
 						} else {
 							String reply_data = new String(reply.getData()).trim();
 							String[] tok = reply_data.split("\\|");
 							assert(tok.length == 2);
 							ss2 = new SessionState(tok[1].trim());
-							// XXX backup up
+							localView.updateStatus(reply.getAddress().toString(), "up");
 						}
 					}
 					
+					if (ss1 == null) {
+						ss1 = new SessionState(new SessionId(-1, "0.0.0.0"), "");
+					}
+					
+					if (ss2 == null) {
+						ss2 = new SessionState(new SessionId(-1, "0.0.0.0"), "");
+					}
 
 					if (ss1.getSessionID().getSessionId() == -1 && ss2.getSessionID().getSessionId() == -1) {
 						// we should never hit this
