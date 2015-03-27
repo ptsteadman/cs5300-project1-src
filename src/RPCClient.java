@@ -153,6 +153,7 @@ public class RPCClient {
 		DatagramSocket rpcSock = null;
 		try {
 			rpcSock = new DatagramSocket();
+			rpcSock.setSoTimeout(10000);
 		} catch (SocketException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

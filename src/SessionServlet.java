@@ -120,6 +120,7 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 					}
 				} else {
 					backup = wPkt.getAddress().getHostAddress();
+					System.out.println(backup);
 					localView.updateStatus(backup, "up");
 				}
 			}
@@ -194,6 +195,7 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 							String[] tok = reply_data.split("\\|");
 							assert(tok.length == 2);
 							ss2 = new SessionState(tok[1].trim());
+							System.out.println(reply.getAddress().getHostAddress());
 							localView.updateStatus(reply.getAddress().getHostAddress(), "up");
 						}
 					}

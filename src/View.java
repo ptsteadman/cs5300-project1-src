@@ -15,9 +15,9 @@ import com.amazonaws.services.simpledb.model.CreateDomainRequest;
 
 
 public class View {
-	private static final String DOMAIN = "project1";
+	private static final String DOMAIN = "project1-pts";
 	private static final String ITEM_NAME = "dbView";
-	private static final String ATTR_NAME = "v1";
+	private static final String ATTR_NAME = "v2";
 
     private AmazonSimpleDB sdb;	
 	private HashMap<String, String[]> viewMap; 	// map of server IDs -> (status, time)
