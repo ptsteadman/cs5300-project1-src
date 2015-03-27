@@ -25,7 +25,7 @@ import javax.servlet.http.HttpServletResponse;
 public class SessionServlet extends HttpServlet implements RPCUser {
 	private static final long serialVersionUID = 1L;
 	private static final String cookieName = "CS5300P1ASESSION";
-	private static final int gossipSecs = 5;
+	private static final int gossipSecs = 5000;
 	private HashMap<String, SessionState> sessionTable;
 	private Map<String, String> lockTable;
 	private View localView;
@@ -158,7 +158,7 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 					}
 					
 					if (backup.equals("0.0.0.0")) {
-						
+						// pass for test
 					} else {
 						ArrayList<String> dest_id = new ArrayList<String>();
 						dest_id.add(backup);
@@ -250,24 +250,23 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 					// something bad happened
 				}
 
-				String backup = "";
+				String backup = "0.0.0.0";
 				if (primaryIp.equals(IPAddr)) {
 					backup = backupIp;
 				} else {
 					backup = primaryIp;
 				}
+
 				ArrayList<String> dest_id = new ArrayList<String>();
 				dest_id.add(backup);
-				System.out.println("Writing to backup = " + backup);
-				System.out.println("We are: " + IPAddr);
 				DatagramPacket dp = rpcClient.sessionWriteClient(ss, dest_id);
 				
 				if (dp == null) {
 					backup = "0.0.0.0";
 					System.out.println("backup write failed");
-					// XXX backup down
+					localView.updateStatus(backup, "down");
 				} else {
-					// XXX backup up
+					localView.updateStatus(backup, "up");
 				}
 
 				request.setAttribute("state", ss.getMessage());
@@ -351,7 +350,7 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 				}
 
 				try {
-					Thread.sleep((gossipSecs/2.0) + random.nextInt(gossipSecs));
+					Thread.sleep((gossipSecs/2) + random.nextInt(gossipSecs));
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
