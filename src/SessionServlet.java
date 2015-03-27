@@ -23,11 +23,12 @@ import javax.servlet.http.HttpServletResponse;
 @WebServlet(value="/SessionServlet", loadOnStartup=1)
 public class SessionServlet extends HttpServlet implements RPCUser {
 	private static final long serialVersionUID = 1L;
+	private static final String cookieName = "CS5300P1ASESSION";
+	private static final int gossipSecs = 5;
 	private HashMap<String, SessionState> sessionTable;
 	private Hashtable<String, String> lockTable;
 	private View localView;
 	private static String initialString = "Hello World!";
-	private static final String cookieName = "CS5300P1ASESSION";
 	private String IPAddr = "0.0.0.0";
 	private Integer sessNum = 1;
 	private RPCServer rpcServer;
@@ -334,10 +335,8 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 					String randomIP = otherUpServers.get(random.nextInt(otherUpServers.size() - 1));
 					DatagramPacket dp = rpcClient.sendExchangeViews(localView, randomIP);
 					if (dp == null) {
-						System.out.println("backup write failed");
 						localView.updateStatus(randomIP, "down");
 					} else {
-						// XXX backup up
 						localView.updateStatus(randomIP, "up");
 						String returned = new String(dp.getData());
 						returned = returned.split("\\|")[1].trim();
@@ -347,7 +346,7 @@ public class SessionServlet extends HttpServlet implements RPCUser {
 				}
 
 				try {
-					Thread.sleep(1000 * 5);
+					Thread.sleep((gossipSecs/2.0) + random.nextInt(gossipSecs));
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
